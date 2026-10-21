@@ -5,9 +5,15 @@
 
 import type { ErrorCode as ErrorCodeType } from "./codes.js";
 import { redactSimulationDetails } from "../lib/simulationDiagnostics.js";
+import { ApiError, isApiError, createApiErrorFromCode, getErrorCatalog, getErrorCatalogEntry } from "./apiError.js";
+import { ValidationErrorDetail, ProblemDetails } from "./problem.js";
 
 // Re-export ErrorCode from the generated codes module
 export { ErrorCode, isErrorCode, type ErrorCode as ErrorCodeType } from "./codes.js";
+
+// Re-export RFC 7807 problem+json types and ApiError
+export { ApiError, isApiError, createApiErrorFromCode, getErrorCatalog, getErrorCatalogEntry };
+export type { ValidationErrorDetail, ProblemDetails, ApiErrorOptions } from "./apiError.js";
 
 export class AppError extends Error {
   public readonly isAppError = true;

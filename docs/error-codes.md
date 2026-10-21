@@ -98,6 +98,9 @@ This section is generated from `docs/error-codes.yaml`. Run `npm run error-codes
 | `REQUEST_TIMEOUT` | HTTP fallback derived codes referenced by documentation |
 | `REQUEST_BODY_TOO_LARGE` | HTTP fallback derived codes referenced by documentation |
 | `UNSUPPORTED_MEDIA_TYPE` | HTTP fallback derived codes referenced by documentation |
+| `MALFORMED_JSON` | HTTP fallback derived codes referenced by documentation |
+| `PAYLOAD_TOO_LARGE` | HTTP fallback derived codes referenced by documentation |
+| `ROUTE_NOT_FOUND` | HTTP fallback derived codes referenced by documentation |
 | `UNPROCESSABLE_ENTITY` | HTTP fallback derived codes referenced by documentation |
 | `USAGE_AGGREGATE_NOT_FOUND` | Admin usage management |
 | `INVALID_EXPORT_SCHEDULE` | Export schedules |

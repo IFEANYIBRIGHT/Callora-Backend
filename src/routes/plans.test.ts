@@ -84,8 +84,15 @@ describe('/api/plans', () => {
 
     const res = await request(app).get('/api/plans/plan_nonexistent');
     expect(res.status).toBe(404);
-    expect(res.body.success).toBe(false);
-    expect(res.body.error.code).toBe('NOT_FOUND');
+    expect(res.headers['content-type']).toMatch(/application\/problem\+json/);
+    expect(res.body).toMatchObject({
+      type: 'https://callora-backend.vercel.app/errors/not_found',
+      title: 'Not Found',
+      status: 404,
+      code: 'NOT_FOUND',
+      instance: '/api/plans/plan_nonexistent',
+    });
+    expect(res.body.error).toBe('Not Found'); // Legacy field
   });
 
   it('should return 504 when slow endpoint exceeds timeout', async () => {
@@ -96,8 +103,15 @@ describe('/api/plans', () => {
 
     const res = await request(app).get('/api/plans/slow');
     expect(res.status).toBe(504);
-    expect(res.body.success).toBe(false);
-    expect(res.body.error.code).toBe('GATEWAY_TIMEOUT');
+    expect(res.headers['content-type']).toMatch(/application\/problem\+json/);
+    expect(res.body).toMatchObject({
+      type: 'https://callora-backend.vercel.app/errors/gateway_timeout',
+      title: 'Gateway Timeout',
+      status: 504,
+      code: 'GATEWAY_TIMEOUT',
+      instance: '/api/plans/slow',
+    });
+    expect(res.body.error).toBe('Gateway Timeout'); // Legacy field
   }, 10_000);
 
   it('should include requestId in response from requestIdMiddleware', async () => {

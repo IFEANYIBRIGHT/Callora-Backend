@@ -60,6 +60,7 @@ import { createRateLimitRouter } from "./routes/rate-limit.js";
 import quotaRequestsRouter from "./routes/quota/requests.js";
 import quotaCountsRouter from "./routes/quotas/counts.js";
 import { createQuotasRouter } from "./routes/quotas.js";
+import { createErrorCatalogRouter } from "./routes/errorCatalog.js";
 import { parsePagination, paginatedResponse } from "./lib/pagination.js";
 import {
   InMemoryVaultRepository,
@@ -462,6 +463,9 @@ export const createApp = (dependencies?: Partial<AppDependencies>) => {
 
   // Prometheus metrics endpoint — auth-gated in production
   app.get("/api/metrics", metricsEndpoint);
+
+  // Error catalog endpoints (public, no auth required)
+  app.use("/api/error-catalog", createErrorCatalogRouter());
 
   app.use(
     "/api/apis",

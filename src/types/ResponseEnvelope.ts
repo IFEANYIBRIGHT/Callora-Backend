@@ -4,6 +4,8 @@
  * This ensures consistent client parsing and contract stability.
  */
 
+import { ProblemDetails } from '../errors/problem.js';
+
 export interface SuccessEnvelope<T = unknown> {
   success: true;
   data: T;
@@ -37,6 +39,9 @@ export interface ErrorEnvelope {
   timestamp: string;
 }
 
+/** RFC 7807 Problem Details envelope */
+export type ProblemEnvelope = ProblemDetails;
+
 export interface ResponseMeta {
   page?: number;
   perPage?: number;
@@ -44,7 +49,8 @@ export interface ResponseMeta {
   [key: string]: unknown;
 }
 
-export type ApiEnvelope<T = unknown> = SuccessEnvelope<T> | ErrorEnvelope;
+/** Union of all possible response envelopes */
+export type ApiEnvelope<T = unknown> = SuccessEnvelope<T> | ErrorEnvelope | ProblemEnvelope;
 
 /** Schema for validating envelope shape at runtime */
 export const ENVELOPE_REQUIRED_FIELDS = ['success', 'requestId', 'timestamp'] as const;

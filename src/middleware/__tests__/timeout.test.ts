@@ -17,15 +17,16 @@ describe('createTimeoutMiddleware', () => {
 
     const res = await request(app).get('/test');
     expect(res.status).toBe(504);
+    expect(res.headers['content-type']).toMatch(/application\/problem\+json/);
     expect(res.body).toMatchObject({
-      success: false,
-      error: {
-        code: 'GATEWAY_TIMEOUT',
-        message: 'Request timed out after 10ms',
-      },
+      type: 'https://callora-backend.vercel.app/errors/gateway_timeout',
+      title: 'Gateway Timeout',
+      status: 504,
+      code: 'GATEWAY_TIMEOUT',
+      detail: 'Request timed out after 10ms',
+      instance: '/test',
     });
-    expect(res.body.requestId).toBeDefined();
-    expect(res.body.timestamp).toBeDefined();
+    expect(res.body.error).toBe('Gateway Timeout'); // Legacy field
   });
 
   it('should allow requests that complete before timeout', async () => {
@@ -55,8 +56,9 @@ describe('createTimeoutMiddleware', () => {
 
     const res = await request(app).get('/test');
     expect(res.status).toBe(504);
-    expect(res.body.error.code).toBe('GATEWAY_TIMEOUT');
-    expect(res.body.error.message).toMatch(/timed out/);
+    expect(res.headers['content-type']).toMatch(/application\/problem\+json/);
+    expect(res.body.code).toBe('GATEWAY_TIMEOUT');
+    expect(res.body.detail).toMatch(/timed out/);
   });
 
   it('should not call abort if response already ended', async () => {

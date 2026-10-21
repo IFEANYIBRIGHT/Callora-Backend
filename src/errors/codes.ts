@@ -267,6 +267,15 @@ export const ErrorCode = {
   /** Media type is not supported */
   UNSUPPORTED_MEDIA_TYPE: "UNSUPPORTED_MEDIA_TYPE",
 
+  /** Request body is not valid JSON */
+  MALFORMED_JSON: "MALFORMED_JSON",
+
+  /** Request body exceeds size limit */
+  PAYLOAD_TOO_LARGE: "PAYLOAD_TOO_LARGE",
+
+  /** The requested route was not found */
+  ROUTE_NOT_FOUND: "ROUTE_NOT_FOUND",
+
   /** Request is syntactically correct but semantically invalid */
   UNPROCESSABLE_ENTITY: "UNPROCESSABLE_ENTITY",
 

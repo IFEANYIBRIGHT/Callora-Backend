@@ -74,15 +74,21 @@ describe('GET /api/health — per-request timeout', () => {
     const res = await request(app).get('/api/health');
 
     expect(res.status).toBe(504);
-    // Canonical error envelope shape required by the repo
-    expect(res.body.success).toBe(false);
-    expect(res.body.error.code).toBe('GATEWAY_TIMEOUT');
-    expect(res.body.error.message).toBe('Request timed out after 50ms');
-    expect(typeof res.body.requestId).toBe('string');
-    expect(typeof res.body.timestamp).toBe('string');
+    // Canonical problem+json shape required by the repo
+    expect(res.headers['content-type']).toMatch(/application\/problem\+json/);
+    expect(res.body).toMatchObject({
+      type: 'https://callora-backend.vercel.app/errors/gateway_timeout',
+      title: 'Gateway Timeout',
+      status: 504,
+      code: 'GATEWAY_TIMEOUT',
+      detail: 'Request timed out after 50ms',
+      instance: '/api/health',
+    });
+    expect(res.body.error).toBe('Gateway Timeout'); // Legacy field
+    expect(typeof res.body.instance).toBe('string');
   });
 
-  it('includes a stable requestId in the 504 body when x-request-id header is set', async () => {
+  it('includes instance in the 504 body when x-request-id header is set', async () => {
     const slowHandler = (_req: Request, _res: Response) => {
       /* hang */
     };
@@ -94,7 +100,7 @@ describe('GET /api/health — per-request timeout', () => {
       .set('x-request-id', 'health-timeout-corr-01');
 
     expect(res.status).toBe(504);
-    expect(res.body.requestId).toBe('health-timeout-corr-01');
+    expect(res.body.instance).toBe('/api/health');
   });
 
   // ── Normal response within deadline ─────────────────────────────────────────
@@ -117,11 +123,19 @@ describe('GET /api/health — per-request timeout', () => {
   it('returns 503 for a fast health check that reports "down" before the deadline', async () => {
     const downHandler = (req: Request, res: Response) => {
       const requestId = getRequestId(req);
-      res
-        .status(503)
-        .json(
-          errorEnvelope('SERVICE_UNAVAILABLE', 'Health check failed', requestId),
-        );
+      const problem = {
+        type: 'https://callora-backend.vercel.app/errors/service_unavailable',
+        title: 'Service Unavailable',
+        status: 503,
+        code: 'SERVICE_UNAVAILABLE',
+        detail: 'Health check failed',
+        instance: req.originalUrl || req.url,
+        error: 'Service Unavailable', // Legacy field
+      };
+      if (typeof res.setHeader === 'function') {
+        res.setHeader('Content-Type', 'application/problem+json');
+      }
+      res.status(503).json(problem);
     };
 
     const app = buildHealthApp(downHandler, 5_000);
@@ -129,8 +143,16 @@ describe('GET /api/health — per-request timeout', () => {
     const res = await request(app).get('/api/health');
 
     expect(res.status).toBe(503);
-    expect(res.body.success).toBe(false);
-    expect(res.body.error.code).toBe('SERVICE_UNAVAILABLE');
+    expect(res.headers['content-type']).toMatch(/application\/problem\+json/);
+    expect(res.body).toMatchObject({
+      type: 'https://callora-backend.vercel.app/errors/service_unavailable',
+      title: 'Service Unavailable',
+      status: 503,
+      code: 'SERVICE_UNAVAILABLE',
+      detail: 'Health check failed',
+      instance: '/api/health',
+    });
+    expect(res.body.error).toBe('Service Unavailable'); // Legacy field
   });
 
   // ── No duplicate response ────────────────────────────────────────────────────
@@ -150,8 +172,15 @@ describe('GET /api/health — per-request timeout', () => {
 
     // The timeout should win and send 504; no concurrent write error
     expect(res.status).toBe(504);
-    expect(res.body.success).toBe(false);
-    expect(res.body.error.code).toBe('GATEWAY_TIMEOUT');
+    expect(res.headers['content-type']).toMatch(/application\/problem\+json/);
+    expect(res.body).toMatchObject({
+      type: 'https://callora-backend.vercel.app/errors/gateway_timeout',
+      title: 'Gateway Timeout',
+      status: 504,
+      code: 'GATEWAY_TIMEOUT',
+      instance: '/api/health',
+    });
+    expect(res.body.error).toBe('Gateway Timeout'); // Legacy field
   });
 
   // ── Cooperative abort via AbortSignal ────────────────────────────────────────

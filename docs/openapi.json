@@ -645,7 +645,9 @@
         "summary": "Get billing history for the authenticated consumer",
         "description": "Returns cursor-paginated billing-history rows sourced from usage_events (the table that BillingService.runPhase1 writes into). Ordered by (created_at DESC, id DESC). Amount is a 7-decimal USDC string. Status is \"confirmed\" when stellar_tx_hash is present, \"pending\" otherwise.",
         "operationId": "getBillingHistory",
-        "tags": ["Billing"],
+        "tags": [
+          "Billing"
+        ],
         "security": [
           {
             "bearerAuth": []
@@ -687,7 +689,10 @@
                       "properties": {
                         "data": {
                           "type": "object",
-                          "required": ["data", "meta"],
+                          "required": [
+                            "data",
+                            "meta"
+                          ],
                           "properties": {
                             "data": {
                               "type": "array",
@@ -697,7 +702,10 @@
                             },
                             "meta": {
                               "type": "object",
-                              "required": ["limit", "hasMore"],
+                              "required": [
+                                "limit",
+                                "hasMore"
+                              ],
                               "properties": {
                                 "limit": {
                                   "type": "integer"
@@ -4141,166 +4149,19 @@
     },
     "/api/errors": {
       "get": {
-        "summary": "List error definitions",
-        "description": "Returns all registered error definitions. Read-only; does not require authentication and is not audited.",
-        "parameters": [],
+        "summary": "List all error codes",
+        "description": "Returns a list of all error codes in the catalog with their descriptions",
+        "operationId": "listErrorCodes",
+        "tags": [
+          "Errors"
+        ],
         "responses": {
           "200": {
-            "description": "Error definitions retrieved successfully",
+            "description": "Successfully retrieved error catalog",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ErrorsListResponse"
-                },
-                "examples": {
-                  "withRecords": {
-                    "summary": "Store contains registered error definitions",
-                    "value": {
-                      "success": true,
-                      "data": {
-                        "errors": [
-                          {
-                            "id": "1",
-                            "code": "ERR_INSUFFICIENT_CREDITS",
-                            "message": "Developer account has insufficient credits",
-                            "statusCode": 402,
-                            "description": "Returned when a billing deduction would take the balance below zero.",
-                            "createdAt": "2026-07-27T09:00:00.000Z",
-                            "updatedAt": "2026-07-27T09:00:00.000Z"
-                          }
-                        ]
-                      },
-                      "requestId": "req-errors-list-1",
-                      "timestamp": "2026-07-27T09:00:00.000Z"
-                    }
-                  },
-                  "empty": {
-                    "summary": "No error definitions registered yet",
-                    "value": {
-                      "success": true,
-                      "data": {
-                        "errors": []
-                      },
-                      "requestId": "req-errors-list-2",
-                      "timestamp": "2026-07-27T09:05:00.000Z"
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
-      },
-      "post": {
-        "summary": "Create an error definition",
-        "description": "Registers a new error definition. Requires authentication; the mutation is recorded in the audit log.",
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ErrorCreateRequest"
-              },
-              "examples": {
-                "createErrorDefinition": {
-                  "summary": "Register a new billing error code",
-                  "value": {
-                    "code": "ERR_INSUFFICIENT_CREDITS",
-                    "message": "Developer account has insufficient credits",
-                    "statusCode": 402,
-                    "description": "Returned when a billing deduction would take the balance below zero."
-                  }
-                }
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": {
-            "description": "Error definition created",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorRecordResponse"
-                },
-                "examples": {
-                  "created": {
-                    "summary": "Newly created error definition",
-                    "value": {
-                      "success": true,
-                      "data": {
-                        "id": "1",
-                        "code": "ERR_INSUFFICIENT_CREDITS",
-                        "message": "Developer account has insufficient credits",
-                        "statusCode": 402,
-                        "description": "Returned when a billing deduction would take the balance below zero.",
-                        "createdAt": "2026-07-27T09:00:00.000Z",
-                        "updatedAt": "2026-07-27T09:00:00.000Z"
-                      },
-                      "requestId": "req-errors-create-1",
-                      "timestamp": "2026-07-27T09:00:00.000Z"
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Request body failed validation",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/StandardErrorEnvelope"
-                },
-                "examples": {
-                  "validationFailed": {
-                    "summary": "Missing required field",
-                    "value": {
-                      "success": false,
-                      "error": {
-                        "code": "BAD_REQUEST",
-                        "message": "Validation failed",
-                        "details": [
-                          {
-                            "field": "code",
-                            "message": "Required",
-                            "code": "invalid_type"
-                          }
-                        ]
-                      },
-                      "requestId": "req-errors-create-400",
-                      "timestamp": "2026-07-27T09:01:00.000Z"
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Authentication is required",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/StandardErrorEnvelope"
-                },
-                "examples": {
-                  "unauthorized": {
-                    "summary": "Missing or invalid authentication",
-                    "value": {
-                      "success": false,
-                      "error": {
-                        "code": "UNAUTHORIZED",
-                        "message": "Unauthorized"
-                      },
-                      "requestId": "req-errors-create-401",
-                      "timestamp": "2026-07-27T09:02:00.000Z"
-                    }
-                  }
+                  "$ref": "#/components/schemas/ErrorCatalogResponse"
                 }
               }
             }
@@ -6417,6 +6278,116 @@
           }
         }
       }
+    },
+    "/api/errors/{code}": {
+      "get": {
+        "summary": "Get error catalog entry by code",
+        "description": "Returns the catalog entry for a specific error code",
+        "operationId": "getErrorCode",
+        "tags": [
+          "Errors"
+        ],
+        "parameters": [
+          {
+            "name": "code",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Z][A-Z0-9_]*$"
+            },
+            "description": "The error code (SCREAMING_SNAKE_CASE)"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successfully retrieved error catalog entry",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorCatalogEntry"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error code not found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/error-catalog": {
+      "get": {
+        "summary": "List all error codes",
+        "description": "Returns a list of all error codes in the catalog with their descriptions",
+        "operationId": "listErrorCodes",
+        "tags": [
+          "Errors"
+        ],
+        "responses": {
+          "200": {
+            "description": "Successfully retrieved error catalog",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorCatalogResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/error-catalog/{code}": {
+      "get": {
+        "summary": "Get error catalog entry by code",
+        "description": "Returns the catalog entry for a specific error code",
+        "operationId": "getErrorCode",
+        "tags": [
+          "Errors"
+        ],
+        "parameters": [
+          {
+            "name": "code",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Z][A-Z0-9_]*$"
+            },
+            "description": "The error code (SCREAMING_SNAKE_CASE)"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successfully retrieved error catalog entry",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorCatalogEntry"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error code not found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -8028,6 +7999,9 @@
           "REQUEST_TIMEOUT",
           "REQUEST_BODY_TOO_LARGE",
           "UNSUPPORTED_MEDIA_TYPE",
+          "MALFORMED_JSON",
+          "PAYLOAD_TOO_LARGE",
+          "ROUTE_NOT_FOUND",
           "UNPROCESSABLE_ENTITY",
           "USAGE_AGGREGATE_NOT_FOUND",
           "INVALID_EXPORT_SCHEDULE",
@@ -9115,6 +9089,123 @@
             "type": "string",
             "format": "date-time",
             "description": "ISO timestamp when forecast was computed."
+          }
+        }
+      },
+      "Problem": {
+        "type": "object",
+        "required": [
+          "type",
+          "title",
+          "status",
+          "code"
+        ],
+        "properties": {
+          "type": {
+            "type": "string",
+            "format": "uri",
+            "description": "A URI reference that identifies the problem type"
+          },
+          "title": {
+            "type": "string",
+            "description": "A short, human-readable summary of the problem type"
+          },
+          "status": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 100,
+            "maximum": 599,
+            "description": "The HTTP status code generated by the origin server"
+          },
+          "code": {
+            "$ref": "#/components/schemas/ErrorCode",
+            "description": "A machine-readable error code"
+          },
+          "detail": {
+            "type": "string",
+            "description": "A human-readable explanation specific to this occurrence"
+          },
+          "instance": {
+            "type": "string",
+            "format": "uri",
+            "description": "A URI reference that identifies the specific occurrence of the problem"
+          },
+          "errors": {
+            "type": "array",
+            "description": "Optional field-level validation errors",
+            "items": {
+              "type": "object",
+              "required": [
+                "field",
+                "message",
+                "code"
+              ],
+              "properties": {
+                "field": {
+                  "type": "string"
+                },
+                "message": {
+                  "type": "string"
+                },
+                "code": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "error": {
+            "type": "string",
+            "description": "Legacy field for backward compatibility - will be removed in next release"
+          }
+        }
+      },
+      "ErrorCatalogEntry": {
+        "type": "object",
+        "required": [
+          "code",
+          "title",
+          "status",
+          "description",
+          "type"
+        ],
+        "properties": {
+          "code": {
+            "type": "string",
+            "description": "The error code"
+          },
+          "title": {
+            "type": "string",
+            "description": "A short, human-readable summary of the problem type"
+          },
+          "status": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 100,
+            "maximum": 599,
+            "description": "The HTTP status code"
+          },
+          "description": {
+            "type": "string",
+            "description": "Human-readable explanation of when this error occurs"
+          },
+          "type": {
+            "type": "string",
+            "format": "uri",
+            "description": "A URI reference that identifies the problem type"
+          }
+        }
+      },
+      "ErrorCatalogResponse": {
+        "type": "object",
+        "required": [
+          "errors"
+        ],
+        "properties": {
+          "errors": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ErrorCatalogEntry"
+            }
           }
         }
       }

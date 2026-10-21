@@ -14,7 +14,7 @@ import {
 } from '../errors/index.js';
 import { ValidationError } from '../middleware/validate.js';
 import { logger } from '../logger.js';
-import type { ErrorEnvelope } from '../types/ResponseEnvelope.js';
+import type { ApiEnvelope } from '../types/ResponseEnvelope.js';
 
 jest.mock('../logger.js', () => ({
   logger: {
@@ -52,7 +52,7 @@ describe('Error Handler', () => {
     errorHandler(
       error,
       mockReq as Request,
-      mockRes as Response<ErrorEnvelope>,
+      mockRes as Response<ApiEnvelope>,
       mockNext
     );
 
@@ -60,14 +60,15 @@ describe('Error Handler', () => {
     
     const call = (mockRes.json as jest.Mock).mock.calls[0][0];
     expect(call).toMatchObject({
-      success: false,
-      requestId: 'test-request-id',
-    });
-    expect(call.error).toMatchObject({
+      type: 'https://callora-backend.vercel.app/errors/bad_request',
+      title: 'Bad Request',
+      status: 400,
       code: 'BAD_REQUEST',
-      message: 'Test bad request',
+      detail: 'Test bad request',
+      instance: undefined,
     });
-    expect(typeof call.timestamp).toBe('string');
+    expect(call.error).toBe('Bad Request'); // Legacy field
+    expect(typeof call.timestamp).toBe('undefined'); // problem+json doesn't have timestamp
 
     expect(logger.error).toHaveBeenCalledWith(
       '[errorHandler]',
@@ -81,7 +82,7 @@ describe('Error Handler', () => {
     errorHandler(
       error,
       mockReq as Request,
-      mockRes as Response<ErrorEnvelope>,
+      mockRes as Response<ApiEnvelope>,
       mockNext
     );
 
@@ -89,12 +90,14 @@ describe('Error Handler', () => {
     
     const call = (mockRes.json as jest.Mock).mock.calls[0][0];
     expect(call).toMatchObject({
-      success: false,
-      requestId: 'test-request-id',
-    });
-    expect(call.error).toMatchObject({
+      type: 'https://callora-backend.vercel.app/errors/internal_server_error',
+      title: 'Internal Server Error',
+      status: 500,
       code: 'INTERNAL_SERVER_ERROR',
+      detail: 'Internal server error', // Generic message in production
+      instance: undefined,
     });
+    expect(call.error).toBe('Internal Server Error'); // Legacy field
   });
 
   it('should handle unknown error type', () => {
@@ -103,15 +106,22 @@ describe('Error Handler', () => {
     errorHandler(
       error,
       mockReq as Request,
-      mockRes as Response<ErrorEnvelope>,
+      mockRes as Response<ApiEnvelope>,
       mockNext
     );
 
     expect(mockRes.status).toHaveBeenCalledWith(500);
     
     const call = (mockRes.json as jest.Mock).mock.calls[0][0];
-    expect(call.success).toBe(false);
-    expect(call.error.code).toBe('INTERNAL_SERVER_ERROR');
+    expect(call).toMatchObject({
+      type: 'https://callora-backend.vercel.app/errors/internal_server_error',
+      title: 'Internal Server Error',
+      status: 500,
+      code: 'INTERNAL_SERVER_ERROR',
+      detail: 'Internal server error',
+      instance: undefined,
+    });
+    expect(call.error).toBe('Internal Server Error'); // Legacy field
   });
 
   it('should use unknown requestId when req.id is missing', () => {
@@ -122,12 +132,13 @@ describe('Error Handler', () => {
     errorHandler(
       error,
       mockReq as Request,
-      mockRes as Response<ErrorEnvelope>,
+      mockRes as Response<ApiEnvelope>,
       mockNext
     );
 
     const call = (mockRes.json as jest.Mock).mock.calls[0][0];
-    expect(call.requestId).toBe('unknown');
+    expect(call.instance).toBeUndefined();
+    expect(call.type).toBe('https://callora-backend.vercel.app/errors/unauthorized');
   });
 
   describe('when headers were already sent (mid-stream failure)', () => {
@@ -146,7 +157,7 @@ describe('Error Handler', () => {
     it('does not write an envelope and destroys the response with the error', () => {
       const error = new Error('upstream reset mid-stream');
 
-      errorHandler(error, mockReq as Request, mockRes as Response<ErrorEnvelope>, mockNext);
+      errorHandler(error, mockReq as Request, mockRes as Response<ApiEnvelope>, mockNext);
 
       expect(mockRes.status).not.toHaveBeenCalled();
       expect(mockRes.json).not.toHaveBeenCalled();
@@ -155,7 +166,7 @@ describe('Error Handler', () => {
     });
 
     it('logs the error exactly once with the requestId', () => {
-      errorHandler(new Error('boom'), mockReq as Request, mockRes as Response<ErrorEnvelope>, mockNext);
+      errorHandler(new Error('boom'), mockReq as Request, mockRes as Response<ApiEnvelope>, mockNext);
 
       expect(logger.error).toHaveBeenCalledTimes(1);
       expect(logger.error).toHaveBeenCalledWith(
@@ -165,20 +176,20 @@ describe('Error Handler', () => {
     });
 
     it('does not delegate to next(err), which would log a second time', () => {
-      errorHandler(new Error('boom'), mockReq as Request, mockRes as Response<ErrorEnvelope>, mockNext);
+      errorHandler(new Error('boom'), mockReq as Request, mockRes as Response<ApiEnvelope>, mockNext);
 
       expect(mockNext).not.toHaveBeenCalled();
     });
 
     it('wraps non-Error throws so destroy always receives an Error', () => {
-      errorHandler('string failure', mockReq as Request, mockRes as Response<ErrorEnvelope>, mockNext);
+      errorHandler('string failure', mockReq as Request, mockRes as Response<ApiEnvelope>, mockNext);
 
       expect(destroy).toHaveBeenCalledWith(expect.any(Error));
       expect((destroy.mock.calls[0][0] as Error).message).toBe('string failure');
     });
 
     it('maps AppErrors thrown mid-stream to a destroy, not a status change', () => {
-      errorHandler(new BadRequestError('late'), mockReq as Request, mockRes as Response<ErrorEnvelope>, mockNext);
+      errorHandler(new BadRequestError('late'), mockReq as Request, mockRes as Response<ApiEnvelope>, mockNext);
 
       expect(mockRes.status).not.toHaveBeenCalled();
       expect(destroy).toHaveBeenCalledTimes(1);
@@ -187,7 +198,7 @@ describe('Error Handler', () => {
     it('leaves a cleanly ended response alone but still logs', () => {
       (mockRes as { writableEnded: boolean }).writableEnded = true;
 
-      errorHandler(new Error('after end'), mockReq as Request, mockRes as Response<ErrorEnvelope>, mockNext);
+      errorHandler(new Error('after end'), mockReq as Request, mockRes as Response<ApiEnvelope>, mockNext);
 
       expect(destroy).not.toHaveBeenCalled();
       expect(logger.error).toHaveBeenCalledTimes(1);
@@ -196,7 +207,7 @@ describe('Error Handler', () => {
     it('does not destroy twice when the client already disconnected', () => {
       (mockRes as { destroyed: boolean }).destroyed = true;
 
-      errorHandler(new Error('client gone'), mockReq as Request, mockRes as Response<ErrorEnvelope>, mockNext);
+      errorHandler(new Error('client gone'), mockReq as Request, mockRes as Response<ApiEnvelope>, mockNext);
 
       expect(destroy).not.toHaveBeenCalled();
       expect(logger.error).toHaveBeenCalledTimes(1);
@@ -208,7 +219,7 @@ describe('Error Handler', () => {
       });
 
       expect(() =>
-        errorHandler(new Error('boom'), mockReq as Request, mockRes as Response<ErrorEnvelope>, mockNext),
+        errorHandler(new Error('boom'), mockReq as Request, mockRes as Response<ApiEnvelope>, mockNext),
       ).not.toThrow();
       expect(logger.error).toHaveBeenCalledTimes(1);
       expect(logger.warn).toHaveBeenCalledWith(
@@ -222,7 +233,7 @@ describe('Error Handler', () => {
     const destroy = jest.fn();
     Object.assign(mockRes, { destroy, writableEnded: false, destroyed: false });
 
-    errorHandler(new BadRequestError('Test error'), mockReq as Request, mockRes as Response<ErrorEnvelope>, mockNext);
+    errorHandler(new BadRequestError('Test error'), mockReq as Request, mockRes as Response<ApiEnvelope>, mockNext);
 
     expect(mockRes.status).toHaveBeenCalledWith(400);
     expect(mockRes.json).toHaveBeenCalledTimes(1);
@@ -275,7 +286,7 @@ describe('Error Handler', () => {
     errorHandler(
       error,
       mockReq as Request,
-      mockRes as Response<ErrorEnvelope>,
+      mockRes as Response<ApiEnvelope>,
       mockNext
     );
 
@@ -291,7 +302,7 @@ describe('Error Handler', () => {
     errorHandler(
       error,
       mockReq as Request,
-      mockRes as Response<ErrorEnvelope>,
+      mockRes as Response<ApiEnvelope>,
       mockNext
     );
 
@@ -308,20 +319,21 @@ describe('Error Handler', () => {
     errorHandler(
       error,
       mockReq as Request,
-      mockRes as Response<ErrorEnvelope>,
+      mockRes as Response<ApiEnvelope>,
       mockNext
     );
 
     expect(mockRes.status).toHaveBeenCalledWith(422);
     const call = (mockRes.json as jest.Mock).mock.calls[0][0];
     expect(call).toMatchObject({
-      success: false,
-      requestId: 'test-request-id',
-    });
-    expect(call.error).toMatchObject({
+      type: 'https://callora-backend.vercel.app/errors/unprocessable_entity',
+      title: 'Unprocessable Entity',
+      status: 422,
       code: 'UNPROCESSABLE_ENTITY',
-      message: 'Custom error',
+      detail: 'Custom error',
+      instance: undefined,
     });
+    expect(call.error).toBe('Unprocessable Entity'); // Legacy field
   });
 
   it('should include validation details for validation errors', () => {
@@ -333,56 +345,94 @@ describe('Error Handler', () => {
       },
     ]);
 
-    errorHandler(error, mockReq as Request, mockRes as Response<ErrorEnvelope>, mockNext);
+    errorHandler(error, mockReq as Request, mockRes as Response<ApiEnvelope>, mockNext);
 
     expect(mockRes.status).toHaveBeenCalledWith(400);
     const call = (mockRes.json as jest.Mock).mock.calls[0][0];
-    expect(call.error.details).toBeDefined();
-    expect(Array.isArray(call.error.details)).toBe(true);
+    expect(call.errors).toBeDefined();
+    expect(Array.isArray(call.errors)).toBe(true);
+    expect(call.errors[0]).toMatchObject({
+      field: 'body.endpoints[0].path',
+      message: 'Invalid input: expected string, received undefined',
+      code: 'INVALID_TYPE',
+    });
   });
 
   it('should map ForbiddenError to 403', () => {
     const error = new ForbiddenError('Test forbidden');
-    errorHandler(error, mockReq as Request, mockRes as Response<ErrorEnvelope>, mockNext);
+    errorHandler(error, mockReq as Request, mockRes as Response<ApiEnvelope>, mockNext);
     expect(mockRes.status).toHaveBeenCalledWith(403);
     const call = (mockRes.json as jest.Mock).mock.calls[0][0];
-    expect(call.error.code).toBe('FORBIDDEN');
+    expect(call).toMatchObject({
+      type: 'https://callora-backend.vercel.app/errors/forbidden',
+      title: 'Forbidden',
+      status: 403,
+      code: 'FORBIDDEN',
+      detail: 'Test forbidden',
+      instance: undefined,
+    });
+    expect(call.error).toBe('Forbidden'); // Legacy field
   });
 
   it('should map NotFoundError to 404', () => {
     const error = new NotFoundError('Test not found');
-    errorHandler(error, mockReq as Request, mockRes as Response<ErrorEnvelope>, mockNext);
+    errorHandler(error, mockReq as Request, mockRes as Response<ApiEnvelope>, mockNext);
     expect(mockRes.status).toHaveBeenCalledWith(404);
     const call = (mockRes.json as jest.Mock).mock.calls[0][0];
-    expect(call.error.code).toBe('NOT_FOUND');
+    expect(call).toMatchObject({
+      type: 'https://callora-backend.vercel.app/errors/not_found',
+      title: 'Not Found',
+      status: 404,
+      code: 'NOT_FOUND',
+      detail: 'Test not found',
+      instance: undefined,
+    });
+    expect(call.error).toBe('Not Found'); // Legacy field
   });
 
   it('should map PaymentRequiredError to 402', () => {
     const error = new PaymentRequiredError('Test payment required');
-    errorHandler(error, mockReq as Request, mockRes as Response<ErrorEnvelope>, mockNext);
+    errorHandler(error, mockReq as Request, mockRes as Response<ApiEnvelope>, mockNext);
     expect(mockRes.status).toHaveBeenCalledWith(402);
     const call = (mockRes.json as jest.Mock).mock.calls[0][0];
-    expect(call.error.code).toBe('PAYMENT_REQUIRED');
+    expect(call).toMatchObject({
+      type: 'https://callora-backend.vercel.app/errors/payment_required',
+      title: 'Payment Required',
+      status: 402,
+      code: 'PAYMENT_REQUIRED',
+      detail: 'Test payment required',
+      instance: undefined,
+    });
+    expect(call.error).toBe('Payment Required'); // Legacy field
   });
 
   it('should map TooManyRequestsError to 429', () => {
     const error = new TooManyRequestsError('Test too many requests');
-    errorHandler(error, mockReq as Request, mockRes as Response<ErrorEnvelope>, mockNext);
+    errorHandler(error, mockReq as Request, mockRes as Response<ApiEnvelope>, mockNext);
     expect(mockRes.status).toHaveBeenCalledWith(429);
     const call = (mockRes.json as jest.Mock).mock.calls[0][0];
-    expect(call.error.code).toBe('TOO_MANY_REQUESTS');
+    expect(call).toMatchObject({
+      type: 'https://callora-backend.vercel.app/errors/too_many_requests',
+      title: 'Too Many Requests',
+      status: 429,
+      code: 'TOO_MANY_REQUESTS',
+      detail: 'Test too many requests',
+      instance: undefined,
+    });
+    expect(call.error).toBe('Too Many Requests'); // Legacy field
   });
 
   it('all error envelopes have required fields', () => {
     const error = new BadRequestError('test');
-    errorHandler(error, mockReq as Request, mockRes as Response<ErrorEnvelope>, mockNext);
+    errorHandler(error, mockReq as Request, mockRes as Response<ApiEnvelope>, mockNext);
     
     const call = (mockRes.json as jest.Mock).mock.calls[0][0];
-    expect(call).toHaveProperty('success');
-    expect(call).toHaveProperty('requestId');
-    expect(call).toHaveProperty('timestamp');
-    expect(call).toHaveProperty('error');
-    expect(call.error).toHaveProperty('code');
-    expect(call.error).toHaveProperty('message');
+    expect(call).toHaveProperty('type');
+    expect(call).toHaveProperty('title');
+    expect(call).toHaveProperty('status');
+    expect(call).toHaveProperty('code');
+    expect(call).toHaveProperty('detail');
+    expect(call).toHaveProperty('instance');
+    expect(call).toHaveProperty('error'); // Legacy field
   });
 });

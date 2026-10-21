@@ -37,8 +37,28 @@
 
 import type { Request, Response, NextFunction } from 'express';
 import { logger } from '../logger.js';
-import { buildErrorEnvelope } from './envelope.js';
 import { getRequestId } from '../lib/envelope.js';
+
+function getDefaultTitle(status: number): string {
+  const titles: Record<number, string> = {
+    400: 'Bad Request',
+    401: 'Unauthorized',
+    402: 'Payment Required',
+    403: 'Forbidden',
+    404: 'Not Found',
+    408: 'Request Timeout',
+    409: 'Conflict',
+    413: 'Payload Too Large',
+    415: 'Unsupported Media Type',
+    422: 'Unprocessable Entity',
+    429: 'Too Many Requests',
+    500: 'Internal Server Error',
+    502: 'Bad Gateway',
+    503: 'Service Unavailable',
+    504: 'Gateway Timeout',
+  };
+  return titles[status] ?? 'Error';
+}
 
 export interface TimeoutMiddlewareOptions {
   /** Deadline in milliseconds. Takes precedence over `durationMs`. */
@@ -114,8 +134,20 @@ export function createTimeoutMiddleware(
           timeoutMs,
         });
 
-        const body = buildErrorEnvelope('GATEWAY_TIMEOUT', timeoutMessage, requestId);
-        res.status(504).json(body);
+        const problem = {
+          type: 'https://callora-backend.vercel.app/errors/gateway_timeout',
+          title: getDefaultTitle(504),
+          status: 504,
+          code: 'GATEWAY_TIMEOUT',
+          detail: timeoutMessage,
+          instance: req.originalUrl || req.url,
+          error: getDefaultTitle(504), // Legacy field
+        };
+
+        if (typeof res.setHeader === 'function') {
+          res.setHeader('Content-Type', 'application/problem+json');
+        }
+        res.status(504).json(problem);
       }
     }, timeoutMs);
 

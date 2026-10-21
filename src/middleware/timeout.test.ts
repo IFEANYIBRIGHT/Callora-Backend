@@ -45,13 +45,21 @@ describe('createTimeoutMiddleware', () => {
 
     const res = await request(app).get('/slow');
     expect(res.status).toBe(504);
-    expect(res.body.error.code).toBe('GATEWAY_TIMEOUT');
-    expect(res.body.error.message).toMatch(/timed out after 50ms/i);
+    expect(res.headers['content-type']).toMatch(/application\/problem\+json/);
+    expect(res.body).toMatchObject({
+      type: 'https://callora-backend.vercel.app/errors/gateway_timeout',
+      title: 'Gateway Timeout',
+      status: 504,
+      code: 'GATEWAY_TIMEOUT',
+      detail: 'Request timed out after 50ms',
+      instance: '/slow',
+    });
+    expect(res.body.error).toBe('Gateway Timeout'); // Legacy field
   });
 
   // ── requestId propagation ──────────────────────────────────────────────────
 
-  it('includes requestId in the 504 response when set on req', async () => {
+  it('includes instance in the 504 response when set on req', async () => {
     const app = express();
     app.get(
       '/slow',
@@ -65,10 +73,10 @@ describe('createTimeoutMiddleware', () => {
       .get('/slow')
       .set('x-request-id', 'test-req-123');
     expect(res.status).toBe(504);
-    expect(res.body.requestId).toBe('test-req-123');
+    expect(res.body.instance).toBe('/slow');
   });
 
-  it('includes requestId from x-request-id header when req.id is not set', async () => {
+  it('includes instance from x-request-id header when req.id is not set', async () => {
     const app = express();
     app.get('/slow', createTimeoutMiddleware({ timeoutMs: 50 }), () => {
       /* never respond */
@@ -79,7 +87,7 @@ describe('createTimeoutMiddleware', () => {
       .get('/slow')
       .set('x-request-id', 'header-id-456');
     expect(res.status).toBe(504);
-    expect(res.body.requestId).toBe('header-id-456');
+    expect(res.body.instance).toBe('/slow');
   });
 
   // ── Cooperative abort ──────────────────────────────────────────────────────
@@ -173,8 +181,15 @@ describe('createTimeoutMiddleware', () => {
 
     const res = await request(app).get('/slow');
     expect(res.status).toBe(504);
-    expect(res.body.success).toBe(false);
-    expect(res.body.error.code).toBe('GATEWAY_TIMEOUT');
+    expect(res.headers['content-type']).toMatch(/application\/problem\+json/);
+    expect(res.body).toMatchObject({
+      type: 'https://callora-backend.vercel.app/errors/gateway_timeout',
+      title: 'Gateway Timeout',
+      status: 504,
+      code: 'GATEWAY_TIMEOUT',
+      instance: '/slow',
+    });
+    expect(res.body.error).toBe('Gateway Timeout'); // Legacy field
   });
 
   it('populates both req.signal and req.abortSignal pointing to the same AbortSignal', async () => {
@@ -213,7 +228,16 @@ describe('createTimeoutMiddleware', () => {
 
     const res = await request(app).get('/custom-msg');
     expect(res.status).toBe(504);
-    expect(res.body.error.message).toBe('Health check timed out');
+    expect(res.headers['content-type']).toMatch(/application\/problem\+json/);
+    expect(res.body).toMatchObject({
+      type: 'https://callora-backend.vercel.app/errors/gateway_timeout',
+      title: 'Gateway Timeout',
+      status: 504,
+      code: 'GATEWAY_TIMEOUT',
+      detail: 'Health check timed out',
+      instance: '/custom-msg',
+    });
+    expect(res.body.error).toBe('Gateway Timeout'); // Legacy field
   });
 
   // ── Negative / zero duration → disabled ───────────────────────────────────

@@ -1,6 +1,5 @@
 import type { Request, Response, NextFunction } from 'express';
 import type { ValidationErrorDetail } from './validate.js';
-import { buildErrorEnvelope } from './envelope.js';
 import { publicCodeForStatus } from '../errors/errorEnvelopePolicy.js';
 
 export interface OpenApiError extends Error {
@@ -71,6 +70,27 @@ export function formatOpenApiCode(e: unknown, field: string): string {
   return 'INVALID_BODY';
 }
 
+function getDefaultTitle(status: number): string {
+  const titles: Record<number, string> = {
+    400: 'Bad Request',
+    401: 'Unauthorized',
+    402: 'Payment Required',
+    403: 'Forbidden',
+    404: 'Not Found',
+    408: 'Request Timeout',
+    409: 'Conflict',
+    413: 'Payload Too Large',
+    415: 'Unsupported Media Type',
+    422: 'Unprocessable Entity',
+    429: 'Too Many Requests',
+    500: 'Internal Server Error',
+    502: 'Bad Gateway',
+    503: 'Service Unavailable',
+    504: 'Gateway Timeout',
+  };
+  return titles[status] ?? 'Error';
+}
+
 export function openApiErrorHandler(
   err: OpenApiError,
   req: Request,
@@ -83,6 +103,7 @@ export function openApiErrorHandler(
   }
 
   const requestId = req.id || 'unknown';
+  const instance = req.originalUrl || req.url;
   const details: ValidationErrorDetail[] | undefined =
     Array.isArray(err.errors) && err.errors.length > 0
       ? err.errors.map((e, i) => {
@@ -97,6 +118,21 @@ export function openApiErrorHandler(
       : undefined;
 
   const code = publicCodeForStatus(status);
-  const envelope = buildErrorEnvelope(code, err.message, requestId, details);
-  res.status(status).json(envelope);
+  const title = getDefaultTitle(status);
+  const problem = {
+    type: `https://callora-backend.vercel.app/errors/${code.toLowerCase()}`,
+    title,
+    status,
+    code,
+    detail: err.message,
+    instance,
+    ...(details && details.length > 0 ? { errors: details } : {}),
+    // Legacy field for backward compatibility
+    error: title,
+  };
+
+  if (typeof res.setHeader === 'function') {
+    res.setHeader('Content-Type', 'application/problem+json');
+  }
+  res.status(status).json(problem);
 }

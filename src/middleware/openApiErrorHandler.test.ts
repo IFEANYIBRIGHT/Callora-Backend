@@ -10,6 +10,7 @@ function response() {
   const result = { statusCode: 200, body: undefined as unknown, sent: false };
   const value = {
     headersSent: false,
+    setHeader: jest.fn(),
     status(code: number) {
       result.statusCode = code;
       return value;
@@ -24,7 +25,7 @@ function response() {
 }
 
 function request(id = 'req-openapi-123'): Request {
-  return { id } as Request;
+  return { id, originalUrl: '/test' } as Request;
 }
 
 function body(result: { body: unknown }): Record<string, unknown> {
@@ -134,20 +135,20 @@ describe('openApiErrorHandler', () => {
 
       expect(output.result.statusCode).toBe(400);
       expect(body(output.result)).toEqual({
-        success: false,
-        error: {
-          code: 'BAD_REQUEST',
-          message: "request.query should have required property 'limit'",
-          details: [
-            {
-              field: 'query.limit',
-              message: "must have required property 'limit'",
-              code: 'REQUIRED',
-            },
-          ],
-        },
-        requestId: 'req-400',
-        timestamp: expect.any(String),
+        type: 'https://callora-backend.vercel.app/errors/bad_request',
+        title: 'Bad Request',
+        status: 400,
+        code: 'BAD_REQUEST',
+        detail: "request.query should have required property 'limit'",
+        instance: '/test',
+        errors: [
+          {
+            field: 'query.limit',
+            message: "must have required property 'limit'",
+            code: 'REQUIRED',
+          },
+        ],
+        error: 'Bad Request', // Legacy field
       });
       expect(next).not.toHaveBeenCalled();
     });
@@ -164,13 +165,13 @@ describe('openApiErrorHandler', () => {
 
       expect(output.result.statusCode).toBe(415);
       expect(body(output.result)).toEqual({
-        success: false,
-        error: {
-          code: 'UNSUPPORTED_MEDIA_TYPE',
-          message: 'unsupported media type "application/xml"',
-        },
-        requestId: 'req-415',
-        timestamp: expect.any(String),
+        type: 'https://callora-backend.vercel.app/errors/unsupported_media_type',
+        title: 'Unsupported Media Type',
+        status: 415,
+        code: 'UNSUPPORTED_MEDIA_TYPE',
+        detail: 'unsupported media type "application/xml"',
+        instance: '/test',
+        error: 'Unsupported Media Type', // Legacy field
       });
     });
 
@@ -182,9 +183,14 @@ describe('openApiErrorHandler', () => {
       openApiErrorHandler(error, request('req-404'), output.value, next);
 
       expect(output.result.statusCode).toBe(404);
-      expect(body(output.result).error).toEqual({
+      expect(body(output.result)).toEqual({
+        type: 'https://callora-backend.vercel.app/errors/not_found',
+        title: 'Not Found',
+        status: 404,
         code: 'NOT_FOUND',
-        message: 'not found',
+        detail: 'not found',
+        instance: '/test',
+        error: 'Not Found', // Legacy field
       });
     });
   });
