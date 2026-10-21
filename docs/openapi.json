@@ -8400,6 +8400,84 @@
           }
         }
       },
+      "SuccessEnvelope": {
+        "type": "object",
+        "required": [
+          "success",
+          "requestId",
+          "timestamp"
+        ],
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "enum": [
+              true
+            ]
+          },
+          "requestId": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "BillingHistoryRow": {
+        "type": "object",
+        "required": [
+          "id",
+          "userId",
+          "apiId",
+          "endpointId",
+          "apiKeyId",
+          "requestId",
+          "amountUsdc",
+          "status",
+          "createdAt"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "userId": {
+            "type": "string"
+          },
+          "apiId": {
+            "type": "string"
+          },
+          "endpointId": {
+            "type": "string"
+          },
+          "apiKeyId": {
+            "type": "string"
+          },
+          "requestId": {
+            "type": "string"
+          },
+          "amountUsdc": {
+            "type": "string",
+            "pattern": "^\\d+(\\.\\d{1,7})?$"
+          },
+          "stellarTxHash": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "confirmed",
+              "pending"
+            ]
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
       "StandardErrorEnvelope": {
         "type": "object",
         "required": [
